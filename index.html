@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 18: React Crypto Tracker</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-white flex justify-center p-4 sm:p-8">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+       
+        // --- The free CoinGecko API ---
+        const API_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false'; // Get top 20 cryptos
+
+        // --- Child Component ---
+        const CryptoRow = ({ coin }) => {
+            const price = coin.current_price;
+            const changePercent = coin.price_change_percentage_24h;
+            const marketCap = coin.market_cap;
+            
+            // Determine color based on price change
+            const changeColor = changePercent >= 0 ? 'text-green-500' : 'text-red-500';
+
+            const formatNumber = (num) => {
+                if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}t`;
+                if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}b`;
+                if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}m`;
+                return `$${num.toLocaleString()}`;
+            }
+
+            return (
+                <tr className="border-b border-gray-700 hover:bg-gray-800">
+                    <td className="p-4 font-medium">{coin.market_cap_rank}</td>
+                    <td className="p-4 flex items-center">
+                        <img src={coin.image} alt={coin.name} className="w-8 h-8 mr-4"/>
+                        <div>
+                            <p className="font-bold">{coin.name}</p>
+                            <p className="text-sm text-gray-400">{coin.symbol.toUpperCase()}</p>
+                        </div>
+                    </td>
+                    <td className="p-4 text-right font-mono">${price.toLocaleString()}</td>
+                    <td className={`p-4 text-right font-medium ${changeColor}`}>{changePercent.toFixed(2)}%</td>
+                    <td className="p-4 text-right font-mono hidden sm:table-cell">{formatNumber(marketCap)}</td>
+                </tr>
+            );
+        };
+        
+        // --- Main App Component ---
+        const App = () => {
+            const [coins, setCoins] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [error, setError] = React.useState(null);
+
+            // Function to fetch data
+            const fetchData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    setCoins(data);
+                } catch (e) {
+                    console.error("Failed to fetch crypto data:", e);
+                    setError("Could not fetch data. Please try refreshing.");
+                }
+                setLoading(false);
+            };
+
+            React.useEffect(() => {
+                fetchData();
+            }, []);
+
+            return (
+                <div className="w-full max-w-4xl">
+                    <header className="mb-8 text-center">
+                        <h1 className="text-4xl font-bold mb-2">Crypto Tracker</h1>
+                        <p className="text-gray-400">Live prices for the top 20 cryptocurrencies</p>
+                    </header>
+                    
+                    <div className="bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-700 text-sm uppercase text-gray-400">
+                                <tr>
+                                    <th className="p-4">#</th>
+                                    <th className="p-4">Name</th>
+                                    <th className="p-4 text-right">Price</th>
+                                    <th className="p-4 text-right">24h %</th>
+                                    <th className="p-4 text-right hidden sm:table-cell">Market Cap</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading && (
+                                    <tr>
+                                        <td colSpan="5" className="text-center p-8 text-gray-400">
+                                            <i className="fas fa-spinner fa-spin mr-2"></i> Loading data...
+                                        </td>
+                                    </tr>
+                                )}
+                                {error && (
+                                     <tr>
+                                        <td colSpan="5" className="text-center p-8 text-red-500">
+                                            {error}
+                                        </td>
+                                    </tr>
+                                )}
+                                {!loading && !error && (
+                                    coins.map(coin => <CryptoRow key={coin.id} coin={coin} />)
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                     <footer className="text-center mt-6">
+                        <button onClick={fetchData} className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors" disabled={loading}>
+                            <i className={`fas fa-sync-alt mr-2 ${loading ? 'fa-spin' : ''}`}></i> 
+                            Refresh Data
+                        </button>
+                    </footer>
+                </div>
+            );
+        };
+
+        // --- Rendering the App ---
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+
+</body>
+</html>
